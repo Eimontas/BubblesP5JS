@@ -18,7 +18,11 @@ var colour = [
 var saveStates = [];
 var numSavedStates = 0;
 
-var prevEllipse;
+var bottomEllipses = [];
+var bottomEllipsesPtr = 0;
+var bottomEllipse = false;
+
+var activeCursor = true;
 
 function setup(){
     createCanvas(canvasWidth, canvasHeight);
@@ -26,14 +30,42 @@ function setup(){
     fill(colour[colourPtr]);
     colourPtr++;
     saveState();
+    noStroke();
 }
 
 function draw(){
     background(55);
     image(saveStates[numSavedStates-1],0 ,0);
-    drawCursor();
-    if(mouseX - (ellipseWidth/2) < 0 || mouseX + (ellipseWidth/2) > canvasWidth){
-
+    if(activeCursor){
+        drawCursor();
+        var oneSide = false;
+        var oneCorner = false;
+        if(mouseX - (ellipseWidth/2) < 0){
+            cursorRightSideOffset();
+            oneSide=true;
+        }else if(mouseX + (ellipseWidth/2) > canvasWidth){
+            bottomEllipse = false;
+            cursorLeftSideOffset();
+            oneSide = true;
+        }else{
+            bottomEllipse = false;
+        }
+        if(mouseY - (ellipseHeight/2) < 0){
+            bottomEllipse = true;
+            cursorBottomSideOffset();
+            if(oneSide){
+                oneCorner = true;
+            }
+        }else if(mouseY + (ellipseHeight/2) > canvasHeight){
+            cursorTopSideOffset();
+            if(oneSide){
+                oneCorner = true;
+            }
+        }
+        if(oneCorner){
+            renderCornerCursors();
+        }
+        renderBottomSide();
     }
 }
 
@@ -48,14 +80,16 @@ function mouseReleased(){
 }
 
 function placeEllipse(){
-    ellipse(mouseX ,mouseY, ellipseWidth, ellipseHeight);
+    if(bottomEllipse){
+        cursorBottomSideOffset(true);
+    }
     fill(colour[colourPtr]);
     saveState();
 }
 
 function newRandParams(){
-    heightWidthRatio = Math.random() + 0.8;//.8 to 1.8
-    ellipseWidth = Math.floor(Math.random() * 41)+80;
+    heightWidthRatio = Math.random() + 0.9;//.8 to 1.8
+    ellipseWidth = Math.floor(Math.random() * 51)+150; // random num 100-200 
     ellipseHeight = ellipseWidth*heightWidthRatio;
 }
 
@@ -63,8 +97,6 @@ function saveState(){
     saveStates[numSavedStates] = get();
     numSavedStates++;
 }
-
-//undo function
 
 function undoToPreviousState(){
     if (!saveStates[0]) {
@@ -76,21 +108,58 @@ function undoToPreviousState(){
     image(saveStates[numSavedStates-1], 0, 0);
     // then set previous state to null
     numSavedStates--;
-  }
+}
   
 function keyPressed(e) {
     // check if the event parameter (e) has Z (keycode 90) and ctrl or cmnd
     if (e.keyCode == 90 && (e.ctrlKey || e.metaKey)) {
         undoToPreviousState();
     }
+    if(e.keyCode == 32){
+        activeCursor = !activeCursor;
+    }
 }
 
-
-//create cursor ellipse
 function drawCursor(){
     ellipse(mouseX ,mouseY, ellipseWidth, ellipseHeight);
 }
 //create offset ellipse
 function drawOffsetCursor(xOffset = 0, yOffset = 0){
     ellipse(mouseX ,mouseY, ellipseWidth, ellipseHeight);
+}
+
+function cursorLeftSideOffset(){
+    ellipse(mouseX-canvasWidth,mouseY, ellipseWidth, ellipseHeight);
+}
+
+function cursorRightSideOffset(){
+    ellipse(mouseX+canvasWidth,mouseY, ellipseWidth, ellipseHeight);
+}
+
+function cursorTopSideOffset(){
+    ellipse(mouseX,mouseY-canvasHeight, ellipseWidth, ellipseHeight);
+}
+
+function cursorBottomSideOffset(render = false){
+    ellipse(mouseX,mouseY+canvasHeight, ellipseWidth, ellipseHeight);
+    if(render){
+        bottomEllipses[bottomEllipsesPtr] = [mouseX,mouseY+canvasHeight, ellipseWidth, ellipseHeight, colourPtr];
+        bottomEllipsesPtr++;
+    }
+}
+
+function renderCornerCursors(render = false){
+    ellipse(mouseX + canvasWidth, mouseY + canvasHeight, ellipseWidth, ellipseHeight);
+    ellipse(mouseX + canvasWidth, mouseY - canvasHeight, ellipseWidth, ellipseHeight);
+    ellipse(mouseX - canvasWidth, mouseY + canvasHeight, ellipseWidth, ellipseHeight);
+    ellipse(mouseX - canvasWidth, mouseY - canvasHeight, ellipseWidth, ellipseHeight);
+}
+
+function renderBottomSide(){
+    var tempColour = colourPtr;
+    for(var i = 0; i < bottomEllipses.length; i++){
+        fill(colour[bottomEllipses[i][4]]);
+        ellipse(bottomEllipses[i][0], bottomEllipses[i][1], bottomEllipses[i][2], bottomEllipses[i][3]);
+    }
+    fill(colour[tempColour]);
 }
